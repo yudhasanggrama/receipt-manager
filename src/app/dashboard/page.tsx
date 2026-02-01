@@ -1,27 +1,14 @@
-import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
+import { createClient } from "@/lib/supabase/server";
 import DashboardClient from "./DashboardClient";
+import { redirect } from "next/navigation";
 
-export default async function DashboardPage() {
-  const cookieStore = await cookies();
+export default async function Page() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll() {},
-      },
-    }
-  );
+  if (!user) {
+    redirect("/login");
+  }
 
-  const { data } = await supabase.auth.getUser();
-
-  if (!data.user) redirect("/login"); // ✅ penting
-
-  return <DashboardClient email={data.user.email ?? "User"} />;
+  return <DashboardClient email={user.email!} username={user.user_metadata?.username} />;
 }

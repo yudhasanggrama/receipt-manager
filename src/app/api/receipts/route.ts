@@ -49,23 +49,60 @@ export async function POST(req: Request) {
 }
 
 // US-08 & US-10: GET dengan Filter & Search
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const supabase = await createClient();
   
+  // 1. Parameter Pagination
+  const page = parseInt(searchParams.get("page") || "1");
+  const limit = parseInt(searchParams.get("limit") || "10");
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+
+  // 2. Parameter Filter
   const search = searchParams.get("q");
-  const category = searchParams.get("category"); // Bisa multi-select dipisah koma
-  const month = searchParams.get("month"); // Format YYYY-MM
+  const category = searchParams.get("category");
+  const month = searchParams.get("month"); // Untuk Dashboard
 
-  let query = supabase.from("receipts").select("*").order("date", { ascending: false });
+  // 3. Inisialisasi Query
+  let query = supabase
+    .from("receipts")
+    .select("*", { count: 'exact' }) 
+    .order("date", { ascending: false });
 
-  if (search) query = query.or(`merchant_name.ilike.%${search}%,notes.ilike.%${search}%`);
-  if (category) query = query.in("category", category.split(","));
-  if (month) {
-    query = query.gte("date", `${month}-01`).lte("date", `${month}-31`);
+  // 4. Logika Search (Merchant & Notes)
+  if (search) {
+    query = query.or(`merchant_name.ilike.%${search}%,notes.ilike.%${search}%`);
   }
 
-  const { data, error } = await query;
+  // 5. Logika Kategori (Multi-select)
+  if (category) {
+    query = query.in("category", category.split(","));
+  }
+
+  // 6. Logika Filter Bulan (Penyebab data Januari tidak muncul tadi)
+  if (month) {
+    const startDate = `${month}-01T00:00:00Z`;
+    const [year, m] = month.split("-").map(Number);
+    const lastDay = new Date(year, m, 0).getDate();
+    const endDate = `${month}-${lastDay}T23:59:59Z`;
+
+    query = query.gte("date", startDate).lte("date", endDate);
+  }
+
+  // 7. Terapkan Pagination (Range ditaruh paling bawah setelah filter)
+  query = query.range(from, to);
+
+  const { data, error, count } = await query;
+
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+
+  // 8. Return Response yang Konsisten
+  return NextResponse.json({
+    data,
+    totalCount: count,
+    totalPages: Math.ceil((count || 0) / limit),
+    currentPage: page
+  });
 }
