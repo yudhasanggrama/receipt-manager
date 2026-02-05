@@ -201,6 +201,7 @@ export async function POST(req: Request) {
                       - If (Sum of line_items + Tax + Service Charge) equals a value on the receipt, use that value.
                       - If the extracted total_amount and the manual sum differ significantly, prioritize the value labeled as 'TOTAL' or 'GRAND TOTAL'.
                       - If the receipt is blurry and a digit is ambiguous (e.g., 8 or 0), use the context of other numbers to pick the most mathematically logical digit.
+                      
                       CLASSIFICATION RULES:
                       - Food: Restaurants, cafes, or ready-to-eat food.
                       - Transport: Fuel, parking, or public transit.

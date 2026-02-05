@@ -26,30 +26,18 @@ const CATEGORIES = [
 
 type CategoryId = (typeof CATEGORIES)[number]["id"];
 
-function computeAvgConfidence(words: any[]): number {
-  const valid = (words ?? []).filter((w) => typeof w?.confidence === "number");
-  if (!valid.length) return 0;
-  const sum = valid.reduce((s, w) => s + (w.confidence ?? 0), 0);
-  return sum / valid.length; // 0..100
-}
-
 export default function AddReceiptClient() {
   const router = useRouter();
   const pathname = usePathname();
   const supabase = createClient();
-
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
-
   const [status, setStatus] = useState<"idle" | "ocr" | "upload" | "done" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
-
-  // hasil gabungan OCR + AI (buat disimpan ke DB)
   const [rawGeminiData, setRawGeminiData] = useState<any>(null);
   const [isCatOpen, setIsCatOpen] = useState(false);
 

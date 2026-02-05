@@ -251,7 +251,9 @@ export default function MyReceiptsPage(p0: { params: Promise<{ id: string; }>; }
                             <div className="relative">
                                 <button onClick={() => { setIsSortOpen(!isSortOpen); setIsCatOpen(false); }} className="w-full flex items-center justify-between px-5 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-bold uppercase shadow-lg shadow-slate-200">
                                     <span className="flex items-center gap-2">
-                                        {SORT_OPTIONS.find(o => o.id === sortBy)?.icon} Sort By
+                                        {/* Mengambil icon dan label dari option yang terpilih */}
+                                        {SORT_OPTIONS.find(o => o.id === sortBy)?.icon}
+                                        {SORT_OPTIONS.find(o => o.id === sortBy)?.label || "Sort By"}
                                     </span>
                                     <ChevronDown size={14} />
                                 </button>

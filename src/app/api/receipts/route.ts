@@ -22,7 +22,6 @@ export async function POST(req: Request) {
     const formData = await req.formData();
     const file = formData.get("file") as File;
     const rawAmount = formData.get("total_amount") as string;
-    
     const normalizedAmount = normalizeAmount(rawAmount);
 
     const merchantName = formData.get("merchant_name") as string;
@@ -36,15 +35,15 @@ export async function POST(req: Request) {
 
     if (!file) return NextResponse.json({ error: "No image provided" }, { status: 400 });
 
-    const path = `${user.id}/${crypto.randomUUID()}`;
-    const { error: upErr } = await supabase.storage.from("receipts").upload(path, file);
+    // 1. Simpan ke Private Bucket
+    const filePath = `${user.id}/${crypto.randomUUID()}`;
+    const { error: upErr } = await supabase.storage.from("receipts").upload(filePath, file);
     if (upErr) throw upErr;
 
-    const { data: url } = supabase.storage.from("receipts").getPublicUrl(path);
-
+    // 2. Simpan 'filePath' ke DB (Bukan Public URL)
     const { data, error: dbErr } = await supabase.from("receipts").insert({
       user_id: user.id,
-      image_url: url.publicUrl,
+      image_url: filePath, // <--- Simpan path saja
       merchant_name: merchantName || "Unknown",
       total_amount: normalizedAmount,
       date: date || new Date().toISOString(),
@@ -132,8 +131,36 @@ export async function GET(req: Request) {
   const { data, error, count } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // --- LOGIKA PRIVATE STORAGE (SIGNED URLS) ---
+  let finalData = data || [];
+  
+  if (finalData.length > 0) {
+    // Ambil semua path gambar yang tersedia
+    const paths = finalData
+      .map(r => r.image_url)
+      .filter(path => path && typeof path === 'string');
+
+    if (paths.length > 0) {
+      // Buat signed URLs sekaligus (bulk) untuk efisiensi
+      const { data: signedUrls, error: signedError } = await supabase.storage
+        .from("receipts")
+        .createSignedUrls(paths, 3600); // Berlaku 1 jam
+
+      if (!signedError && signedUrls) {
+        // Petakan kembali signedUrl ke data asli
+        finalData = finalData.map(receipt => {
+          const signed = signedUrls.find(s => s.path === receipt.image_url);
+          return {
+            ...receipt,
+            image_url: signed?.signedUrl || receipt.image_url
+          };
+        });
+      }
+    }
+  }
+
   return NextResponse.json({
-    data,
+    data: finalData,
     totalCount: count,
     totalPages: Math.ceil((count || 0) / limit),
     currentPage: page

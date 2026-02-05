@@ -36,10 +36,21 @@ export async function middleware(req: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  
+
   const pathname = req.nextUrl.pathname;
   const search = req.nextUrl.search;
 
-  // ✅ Guest-only routes: kalau sudah login, jangan boleh lihat login/register
+  // 🤖 1. BOT PROTECTION (User-Agent Check)
+  const ua = req.headers.get("user-agent") || "";
+  const isBot = /bot|headless|puppeteer|selenium|crawler/i.test(ua);
+  
+  // Jika bot mencoba mengakses dashboard atau rute POST, blokir.
+  if (isBot && pathname.startsWith("/dashboard")) {
+    return new NextResponse("Forbidden: Bot detected", { status: 403 });
+  }
+
+  // ✅ Guest-only routes
   const isGuestOnly = pathname === "/login" || pathname === "/register";
   if (user && isGuestOnly) {
     const next = req.nextUrl.searchParams.get("next") || "/dashboard";
@@ -49,16 +60,26 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // ✅ Protected routes: butuh login
-  const isProtected =
-    pathname.startsWith("/dashboard") || pathname.startsWith("/receipts");
+  // ✅ Protected routes
+  const isProtected = pathname.startsWith("/dashboard") || pathname.startsWith("/receipts");
 
-  if (!user && isProtected) {
-    const loginUrl = req.nextUrl.clone();
-    loginUrl.pathname = "/login";
-    loginUrl.searchParams.set("next", pathname + search);
-    return NextResponse.redirect(loginUrl);
+  if (isProtected) {
+    // 📧 2. EMAIL CONFIRMATION CHECK
+    // Pastikan user tidak hanya login, tapi juga sudah verifikasi email
+    if (user && !user.confirmed_at) {
+      const verifyUrl = req.nextUrl.clone();
+      verifyUrl.pathname = "/verify-email"; 
+      return NextResponse.redirect(verifyUrl);
+    }
+
+    if (!user) {
+      const loginUrl = req.nextUrl.clone();
+      loginUrl.pathname = "/login";
+      loginUrl.searchParams.set("next", pathname + search);
+      return NextResponse.redirect(loginUrl);
+    }
   }
+
   return res;
 }
 
