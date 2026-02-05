@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import EditReceiptClient from "./EditReceiptClient";
 
 export default async function Page({ 
@@ -5,13 +6,19 @@ export default async function Page({
 }: { 
   params: Promise<{ id: string }> 
 }) {
-  // Wajib di-await di Next.js 15/16
-  const resolvedParams = await params;
-  const id = resolvedParams.id;
+  const { id } = await params;
 
   return (
-    <main>
-      <EditReceiptClient id={id} />
+    <main className="min-h-screen bg-[#fcfcfc]">
+      <Suspense fallback={
+        <div className="h-screen flex items-center justify-center">
+          <div className="animate-pulse text-xs font-bold text-slate-400 uppercase">
+            Initializing...
+          </div>
+        </div>
+      }>
+        <EditReceiptClient id={id} />
+      </Suspense>
     </main>
   );
 }

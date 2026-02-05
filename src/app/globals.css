@@ -1,4 +1,7 @@
 @import "tailwindcss";
+@import "flatpickr/dist/flatpickr.css";
+@import "flatpickr/dist/themes/material_green.css";
+@import "flatpickr/dist/plugins/monthSelect/style.css";
 
 :root {
   --background: #ffffff;
@@ -23,4 +26,54 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Di globals.css */
+/* Pastikan kalender muncul di atas elemen lain */
+.flatpickr-calendar {
+  z-index: 9999 !important;
+}
+
+/* Opsional: Mempercantik tampilan agar sesuai tema Emerald */
+.flatpickr-day.selected, .flatpickr-day.startRange, .flatpickr-day.endRange {
+  background: #10b981 !important;
+  border-color: #10b981 !important;
+}
+.flatpickr-day.inRange {
+  box-shadow: -5px 0 0 #ecfdf5, 5px 0 0 #ecfdf5 !important;
+  background: #ecfdf5 !important;
+}
+
+.flatpickr-calendar.dashboard-month-picker {
+  z-index: 9999 !important;
+  border-radius: 20px !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+  border: 1px solid #e2e8f0 !important;
+  background: #ffffff !important;
+}
+
+/* Warna hijau khusus dashboard */
+.dashboard-month-picker .flatpickr-monthSelect-month.selected {
+  background: #10b981 !important; /* Emerald 500 */
+  color: white !important;
+  box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.4) !important;
+}
+
+.dashboard-month-picker .flatpickr-monthSelect-month:hover {
+  background: #ecfdf5 !important; /* Emerald 50 */
+  color: #065f46 !important;
+}
+
+/* Menghilangkan panah bawaan jika mengganggu visual */
+.dashboard-month-picker.arrowTop:before, 
+.dashboard-month-picker.arrowTop:after {
+  border-bottom-color: #ffffff !important;
+}
+
+html, body {
+  overflow-x: hidden;
+}
+
+html {
+  scrollbar-gutter: stable;
 }

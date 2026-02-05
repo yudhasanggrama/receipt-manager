@@ -10,7 +10,6 @@ function supabaseKey() {
 }
 
 export async function createClient() {
-  // ✅ DI NEXT BARU: HARUS await
   const cookieStore = await cookies();
 
   return createServerClient(
