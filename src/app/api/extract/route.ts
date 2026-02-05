@@ -13,13 +13,11 @@ export async function POST(req: Request) {
     const uint8Array = new Uint8Array(bytes);
 
     const result = await generateObject({
-      // Menggunakan Gemini 2.0 Flash untuk akurasi klasifikasi yang lebih baik
       model: google('gemini-2.5-flash'), 
       schema: z.object({
         merchant_name: z.string(),
         date: z.string().describe("Format YYYY-MM-DD"),
         total_amount: z.number(),
-        // Menambahkan pemilihan kategori berdasarkan daftar Anda
         category: z.enum([
           "Food", "Transport", "Shopping", "Health", 
           "Entertainment", "Bills", "Groceries", "Others"
@@ -37,17 +35,30 @@ export async function POST(req: Request) {
               type: 'text', 
               text: `Extract data from this receipt. 
               
-              CLASSIFICATION RULES:
-              - Food: Restaurants, cafes, or ready-to-eat food.
-              - Transport: Fuel, parking, or public transit.
-              - Shopping: Clothing, electronics, or personal hobbies.
-              - Health: Pharmacy, hospital, or vitamins.
-              - Entertainment: Movies, games, or recreation.
-              - Bills: Electricity, water, internet, or taxes.
-              - Groceries: Supermarket/minimarket shopping for raw ingredients.
-              - Others: Use if no other category fits.
+                      MERCHANT_NAME GUIDELINES:
+                      - Identify the specific store or seller name, NOT the marketplace platform.
+                      - If the receipt is from Tokopedia, Shopee, Lazada, or Amazon, look for the "Penjual", "Seller", or "Sold by" field.
+                      - Do NOT use "Tokopedia", "Shopee", "PT GoTo Gojek Tokopedia", or similar platform names as the merchant_name.
+                      - If the store name is not explicitly labeled, look for the entity that is providing the goods/services.
 
-              Return valid JSON matching the schema.` 
+                      TOTAL_AMOUNT GUIDELINES:
+                      - Always extract the full nominal value in Indonesian Rupiah (IDR).
+                      - Indonesian receipts often use '.' as a thousand separator and ',' for decimals.
+                      - If the receipt shows a decimal that represents thousands (e.g., 92.4 meaning 92400), you must convert it to the full integer 92400.
+                      - Do not include fractional cents (digits after the decimal comma) unless they are significant.
+                      - Your goal is to return the actual amount deducted from the user's balance.
+
+                      CLASSIFICATION RULES:
+                      - Food: Restaurants, cafes, or ready-to-eat food.
+                      - Transport: Fuel, parking, or public transit.
+                      - Shopping: Clothing, electronics, or personal hobbies.
+                      - Health: Pharmacy, hospital, or vitamins.
+                      - Entertainment: Movies, games, or recreation.
+                      - Bills: Electricity, water, internet, or taxes.
+                      - Groceries: Supermarket/minimarket shopping for raw ingredients.
+                      - Others: Use if no other category fits.
+
+                      Return valid JSON matching the schema.`
             },
             { 
               type: 'image', 
