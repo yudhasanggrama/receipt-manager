@@ -70,7 +70,7 @@ export default function RegisterClient() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-emerald-50 via-green-50 to-lime-50">
+    <div className="relative min-h-screen overflow-hidden bg-linear-to-br from-emerald-50 via-green-50 to-lime-50">
       <div className="pointer-events-none absolute -top-24 -left-24 h-96 w-96 rounded-full bg-emerald-300/40 blur-3xl" />
       <div className="pointer-events-none absolute top-1/2 -right-24 h-96 w-96 rounded-full bg-lime-300/40 blur-3xl" />
       <div

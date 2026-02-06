@@ -7,7 +7,7 @@ export async function POST(req: Request) {
     const formData = await req.formData();
     const file = formData.get("file") as File;
     
-    if (!file) return Response.json({ error: "File tidak ditemukan" }, { status: 400 });
+    if (!file) return Response.json({ error: "File Not Found" }, { status: 400 });
 
     const bytes = await file.arrayBuffer();
     const uint8Array = new Uint8Array(bytes);
