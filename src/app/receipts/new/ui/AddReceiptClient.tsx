@@ -109,7 +109,7 @@ export default function AddReceiptClient() {
 
     (async () => {
       try {
-        const worker = await createWorker("eng");
+        const worker = await createWorker(["eng", "ind"]);
         if (!alive) {
           await worker.terminate();
           return;
