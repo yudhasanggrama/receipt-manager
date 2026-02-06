@@ -336,10 +336,11 @@ export default function AddReceiptClient() {
 
     if (usedFallback) {
       toast.success("Success: OCR → AI extract!");
+    } else {
+      toast.success("Scanning completed!")
     }
 
     setStatus("idle");
-    toast.success("Scanning completed!")
   } catch (e: any) {
     setError(e?.message || "Unknown error");
     setStatus("error");
