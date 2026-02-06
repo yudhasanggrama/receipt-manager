@@ -1,17 +1,19 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   Camera, ImageIcon, ChevronLeft, Loader2, X, RefreshCw,
   Utensils, Car, ShoppingBag, HeartPulse, Film, FileText, ShoppingCart, Box,
-  ChevronDown, LayoutDashboard, Receipt, PieChart as PieIcon, LogOut, Plus
+  ChevronDown, LayoutDashboard, Receipt, PieChart as PieIcon, LogOut, Plus,
+  Check
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import Sidebar from "@/app/components/sidebar/SidebarClient";
 import { toast } from "sonner";
 import { createWorker, type Worker } from "tesseract.js";
+import Cropper, { Area } from "react-easy-crop";
 
 const CATEGORIES = [
   { id: "Food", label: "Food", icon: <Utensils size={14} />, color: "bg-orange-100 text-orange-600" },
@@ -26,6 +28,38 @@ const CATEGORIES = [
 
 type CategoryId = (typeof CATEGORIES)[number]["id"];
 
+async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<File> {
+  const image = new Image();
+  image.src = imageSrc;
+  await new Promise((resolve) => (image.onload = resolve));
+
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("No 2d context");
+
+  canvas.width = pixelCrop.width;
+  canvas.height = pixelCrop.height;
+
+  ctx.drawImage(
+    image,
+    pixelCrop.x,
+    pixelCrop.y,
+    pixelCrop.width,
+    pixelCrop.height,
+    0,
+    0,
+    pixelCrop.width,
+    pixelCrop.height
+  );
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) return reject(new Error("Canvas is empty"));
+      resolve(new File([blob], "cropped_receipt.jpg", { type: "image/jpeg" }));
+    }, "image/jpeg", 0.95);
+  });
+}
+
 export default function AddReceiptClient() {
   const router = useRouter();
   const pathname = usePathname();
@@ -35,7 +69,10 @@ export default function AddReceiptClient() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [isCameraActive, setIsCameraActive] = useState(false);const [tempImage, setTempImage] = useState<string | null>(null); // Gambar mentah sebelum dicrop
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [status, setStatus] = useState<"idle" | "ocr" | "upload" | "done" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [rawGeminiData, setRawGeminiData] = useState<any>(null);
@@ -128,29 +165,38 @@ export default function AddReceiptClient() {
     if (!videoRef.current || !canvasRef.current) return;
     const video = videoRef.current;
     const canvas = canvasRef.current;
-
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-
     canvas.getContext("2d")?.drawImage(video, 0, 0);
 
-    canvas.toBlob((blob) => {
-      if (!blob) return;
-      const capturedFile = new File([blob], `receipt_${Date.now()}.jpg`, { type: "image/jpeg" });
-      setFile(capturedFile);
-      setPreview(URL.createObjectURL(capturedFile));
-      stopCamera();
-      setError(null);
-    }, "image/jpeg", 0.9);
+    const dataUrl = canvas.toDataURL("image/jpeg");
+    setTempImage(dataUrl); // Buka cropper
+    stopCamera();
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0] ?? null;
     if (!f) return;
-    stopCamera();
-    setFile(f);
-    setPreview(URL.createObjectURL(f));
-    setError(null);
+    const url = URL.createObjectURL(f);
+    setTempImage(url); // Buka cropper
+  };
+
+  // --- FUNGSI SAVE CROP ---
+  const onCropComplete = useCallback((_area: Area, pixels: Area) => {
+    setCroppedAreaPixels(pixels);
+  }, []);
+
+  const handleApplyCrop = async () => {
+    if (!tempImage || !croppedAreaPixels) return;
+    try {
+      const croppedFile = await getCroppedImg(tempImage, croppedAreaPixels);
+      setFile(croppedFile);
+      setPreview(URL.createObjectURL(croppedFile));
+      setTempImage(null); // Tutup cropper
+      setError(null);
+    } catch (e) {
+      toast.error("Failed to crop image");
+    }
   };
 
   useEffect(() => {
@@ -169,8 +215,8 @@ export default function AddReceiptClient() {
     img.src = url;
   });
 
-  // target width: 1600 px (cukup buat font struk)
-  const targetW = Math.min(2000, Math.max(1600, img.width));
+  // Ukuran target agar teks tajam
+  const targetW = 1600; 
   const scale = targetW / img.width;
 
   const canvas = document.createElement("canvas");
@@ -180,18 +226,20 @@ export default function AddReceiptClient() {
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas context error");
 
-  // no filter dulu biar ga “kacau”
+  // --- IMAGE PROCESSING UNTUK OCR ---
+  // Kita buat gambar hitam putih dan kontras tinggi agar teks lebih jelas
+  ctx.filter = "contrast(1.2) grayscale(1)"; 
+  
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
   URL.revokeObjectURL(url);
 
   const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob failed"))), "image/jpeg", 0.95);
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob failed"))), "image/jpeg", 0.9);
   });
 
   return new File([blob], file.name, { type: "image/jpeg" });
-}
-
+  }
   // --- OCR (Tesseract) -> AI extract (text) ---
   async function runOCR() {
   if (!file) return;
@@ -344,6 +392,37 @@ export default function AddReceiptClient() {
           backgroundSize: "40px 40px",
         }}
       />
+
+      {tempImage && (
+        <div className="fixed inset-0 z-100 bg-slate-900 flex flex-col">
+          <div className="relative flex-1 bg-black">
+            <Cropper
+              image={tempImage}
+              crop={crop}
+              zoom={zoom}
+              aspect={3 / 4}
+              onCropChange={setCrop}
+              onZoomChange={setZoom}
+              onCropComplete={onCropComplete}
+            />
+          </div>
+          <div className="bg-white p-6 flex items-center justify-between shadow-2xl">
+            <button 
+              onClick={() => setTempImage(null)}
+              className="flex items-center gap-2 text-slate-500 font-bold text-[10px] uppercase tracking-widest"
+            >
+              <X size={18} /> Cancel
+            </button>
+            <div className="text-[10px] font-black uppercase text-slate-400">Crop your receipt</div>
+            <button 
+              onClick={handleApplyCrop}
+              className="flex items-center gap-2 bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest"
+            >
+              <Check size={18} /> Apply
+            </button>
+          </div>
+        </div>
+      )}
 
       <Sidebar handleLogout={handleLogout} />
 
