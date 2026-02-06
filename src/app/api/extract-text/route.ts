@@ -183,25 +183,28 @@ export async function POST(req: Request) {
             {
               type: "text",
               text: `You are extracting structured receipt data from OCR text that may contain typos.
-                      Return valid JSON matching the schema.
+                      Return STRICT JSON matching the schema. No markdown.
 
-                      MERCHANT_NAME GUIDELINES:
-                      - Identify the specific store or seller name, NOT the marketplace platform.
-                      - If the receipt is from Tokopedia, Shopee, Lazada, or Amazon, look for the "Penjual", "Seller", or "Sold by" field.
-                      - Do NOT use "Tokopedia", "Shopee", "PT GoTo Gojek Tokopedia", or similar platform names as the merchant_name.
-                      - If the store name is not explicitly labeled, look for the entity that is providing the goods/services.
+                      ABSOLUTE RULES:
+                      - Use ONLY information present in OCR TEXT. Do not invent.
+                      - If uncertain/missing, use null.
+                      - For any numeric field, output integer IDR (no separators).
 
-                      TOTAL_AMOUNT GUIDELINES:
-                      - Always extract the full nominal value in Indonesian Rupiah (IDR).
-                      - Indonesian receipts often use '.' as a thousand separator and ',' for decimals.
-                      - If the receipt shows a decimal that represents thousands (e.g., 92.4 meaning 92400), you must convert it to the full integer 92400.
-                      - Do not include fractional cents (digits after the decimal comma) unless they are significant.
-                      - Your goal is to return the actual amount deducted from the user's balance.
-                      - DOUBLE-CHECK LOGIC: Before outputting the total_amount, sum up all prices in line_items.
-                      - If (Sum of line_items + Tax + Service Charge) equals a value on the receipt, use that value.
-                      - If the extracted total_amount and the manual sum differ significantly, prioritize the value labeled as 'TOTAL' or 'GRAND TOTAL'.
-                      - If the receipt is blurry and a digit is ambiguous (e.g., 8 or 0), use the context of other numbers to pick the most mathematically logical digit.
-                      
+                      STEP 1: CANDIDATES (must be derived from OCR TEXT)
+                      Extract candidate lists:
+                      - merchant_candidates: up to 5 strings from top/header-like lines (remove address-like lines).
+                      - date_candidates: up to 5 strings that look like dates/times.
+                      - total_candidates: up to 8 numbers near keywords: TOTAL, GRAND TOTAL, AMOUNT, BAYAR, TOTAL BAYAR, TOTAL RP, JUMLAH.
+                      - line_item_amounts: list of integers from OCR that look like item prices/subtotals.
+
+                      STEP 2: DECISION
+                      - merchant_name: choose best from merchant_candidates. Must NOT be marketplace unless explicitly "Sold by / Penjual".
+                      - date: pick the most plausible date from date_candidates and convert to YYYY-MM-DD. If only dd/mm/yy, infer century reasonably.
+                      - total_amount:
+                        - Prefer explicit TOTAL/GRAND TOTAL candidate.
+                        - If ambiguous like "92.4", interpret as 92400 ONLY if it matches other totals/subtotal context.
+                        - If multiple totals exist (subtotal, total, payment), choose the final amount paid/deducted.
+
                       CLASSIFICATION RULES:
                       - Food: Restaurants, cafes, or ready-to-eat food.
                       - Transport: Fuel, parking, or public transit.
