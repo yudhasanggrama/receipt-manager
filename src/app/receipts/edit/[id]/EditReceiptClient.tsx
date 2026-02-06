@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import DeleteAction from "@/app/components/deleteButton/DeleteAction";
-import { toast } from "sonner"; // 1. Import Sonner
+import { toast } from "sonner";
 
 const CATEGORIES = [
   { id: "Food", label: "Food", icon: Utensils, color: "bg-orange-100 text-orange-600" },
@@ -76,8 +76,6 @@ export default function EditReceiptClient({ id }: { id: string }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-
-    // 2. Gunakan toast.promise untuk UX yang lebih mewah
     const updateAction = new Promise(async (resolve, reject) => {
       try {
         const res = await fetch(`/api/receipts/${id}`, {

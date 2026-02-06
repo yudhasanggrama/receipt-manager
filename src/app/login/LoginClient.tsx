@@ -97,7 +97,7 @@ export default function LoginClient() {
                   </span>
                 </h1>
                 <p className="mt-2 text-sm text-slate-600">
-                  Login to your account to manage your spending finance.
+                  Log in to your account to keep track of your spending.
                 </p>
               </div>
               {/* ------------------------------ */}

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Trash2, Loader2, AlertTriangle } from "lucide-react";
-import { toast } from "sonner"; // Import toast
+import { toast } from "sonner";
 
 interface DeleteActionProps {
   onDelete: () => Promise<void>;
@@ -31,7 +31,6 @@ export default function DeleteAction({ onDelete, itemLabel = "item", className =
 
   const handleDelete = async () => {
     setIsDeleting(true);
-    // Kita tidak menggunakan toast.loading di sini karena button sudah punya spinner
     try {
       await onDelete();
       setIsOpen(false);

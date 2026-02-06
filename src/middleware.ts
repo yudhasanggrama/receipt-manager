@@ -41,7 +41,7 @@ export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
   const search = req.nextUrl.search;
 
-  // 🤖 1. BOT PROTECTION (User-Agent Check)
+  //BOT PROTECTION (User-Agent Check)
   const ua = req.headers.get("user-agent") || "";
   const isBot = /bot|headless|puppeteer|selenium|crawler/i.test(ua);
   
@@ -50,7 +50,7 @@ export async function middleware(req: NextRequest) {
     return new NextResponse("Forbidden: Bot detected", { status: 403 });
   }
 
-  // ✅ Guest-only routes
+  //Guest-only routes
   const isGuestOnly = pathname === "/login" || pathname === "/register";
   if (user && isGuestOnly) {
     const next = req.nextUrl.searchParams.get("next") || "/dashboard";
@@ -60,12 +60,11 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // ✅ Protected routes
+  // Protected routes
   const isProtected = pathname.startsWith("/dashboard") || pathname.startsWith("/receipts");
 
   if (isProtected) {
-    // 📧 2. EMAIL CONFIRMATION CHECK
-    // Pastikan user tidak hanya login, tapi juga sudah verifikasi email
+    // EMAIL CONFIRMATION CHECK
     if (user && !user.confirmed_at) {
       const verifyUrl = req.nextUrl.clone();
       verifyUrl.pathname = "/verify-email"; 

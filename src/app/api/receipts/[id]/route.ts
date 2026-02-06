@@ -32,7 +32,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
 
 export async function DELETE(req: Request, { params }: RouteParams) {
   const supabase = await createClient();
-  const { id } = await params; // Ambil id secara async
+  const { id } = await params;
   
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -70,11 +70,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       .from("receipts")
       .select("*")
       .eq("id", id)
-      .eq("user_id", user?.id) // Pastikan hanya milik user ini yang bisa diambil
+      .eq("user_id", user?.id)
       .single();
 
     if (error || !data) {
-      // Pastikan tetap return JSON agar fetch.json() tidak crash
       return NextResponse.json({ error: "Data not found" }, { status: 404 });
     }
 

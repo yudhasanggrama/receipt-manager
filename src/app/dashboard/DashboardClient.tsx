@@ -224,7 +224,7 @@ export default function DashboardClient({ email, username }: Props) {
         doc.setFont("helvetica", "bold");
         doc.text(`Rp ${stats.total.toLocaleString('id-ID')}`, 20, 52);
 
-        // --- PIE CHART (FIXED SLICES) ---
+        // --- PIE CHART ---
         const centerX = 50;
         const centerY = 100;
         const radius = 25;
@@ -375,7 +375,6 @@ export default function DashboardClient({ email, username }: Props) {
 
       <main className="relative z-10 lg:ml-60 min-h-screen pb-24 lg:pb-8">
         <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/70 px-4 py-3 backdrop-blur-md flex items-center justify-between">
-          {/* MODIFIKASI DISINI: Menghapus hidden lg:block agar Overview tetap tampil di mobile */}
           <h1 className="text-[10px] lg:text-xs font-bold uppercase tracking-wider text-slate-400">Overview</h1>
           
           <div className="flex items-center gap-2 sm:gap-3">
@@ -390,8 +389,6 @@ export default function DashboardClient({ email, username }: Props) {
 
                 <button onClick={() => changeMonth(1)} className="p-1 hover:bg-slate-50 rounded-md transition-all text-slate-400"><ChevronRight size={14}/></button>
              </div>
-             
-             {/* MODIFIKASI DISINI: Menghapus hidden sm:block agar Username tetap tampil di mobile */}
              <div className="flex items-center gap-2 pl-2 sm:pl-3 border-l border-slate-200">
                 <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase max-w-15 sm:max-w-none truncate">{displayUsername}</p>
                 <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-600 shrink-0">

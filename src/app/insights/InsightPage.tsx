@@ -77,7 +77,7 @@ export default function InsightsPage() {
         
         // Kirim start dan end yang sudah mencakup seluruh hari ke API
         const startParam = start;
-        const endParam = endDate.toISOString(); // Mengirim string ISO lengkap
+        const endParam = endDate.toISOString();
 
         const res = await fetch(`/api/receipts?start=${startParam}&end=${endParam}`);
         const result = await res.json();

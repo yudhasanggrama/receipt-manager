@@ -1,5 +1,4 @@
-import InsightsPage from "@/app/insights/InsightPage"; // Jika Anda memisahkan komponennya
-// Atau langsung masukkan kode di sini
+import InsightsPage from "@/app/insights/InsightPage";
 
 export const metadata = {
   title: "Insights | MyReceipts",

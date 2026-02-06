@@ -175,7 +175,7 @@ export default function AddReceiptClient() {
     canvas.getContext("2d")?.drawImage(video, 0, 0);
 
     const dataUrl = canvas.toDataURL("image/jpeg");
-    setTempImage(dataUrl); // Ini akan memicu modal Crop muncul
+    setTempImage(dataUrl);
     stopCamera();
   }
 
@@ -187,7 +187,7 @@ export default function AddReceiptClient() {
   const url = URL.createObjectURL(f);
   setFile(f);
   setPreview(url);
-  setTempImage(null); // Memastikan cropper tertutup jika sebelumnya terbuka
+  setTempImage(null);
   setError(null);
 };
 
@@ -252,100 +252,101 @@ export default function AddReceiptClient() {
   
   
   async function runOCR() {
-  if (!file) return;
-  setStatus("ocr");
-  setError(null);
-
-  try {
-    const worker = await createWorker(["eng", "ind"]);
-    if (!worker) throw new Error("Worker not ready");
-
-    const input = await upscaleForOcr(file);
-    const ocr = await worker.recognize(input);
-    const ocrText = String(ocr.data?.text ?? "");
-    const confidence = typeof ocr.data?.confidence === "number" ? ocr.data.confidence : 0;
-
-    if (!ocrText.trim()) throw new Error("OCR Null");
-
-    let ai: any = null;
-    let usedFallback = false;
+    if (!file) return;
+    setStatus("ocr");
+    setError(null);
 
     try {
-      const shouldFallbackEarly = confidence <= 75;
+      const worker = await createWorker(["eng", "ind"]);
+      if (!worker) throw new Error("Worker not ready");
 
-      if (!shouldFallbackEarly) {
-        const resText = await fetch("/api/extract-text", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ocrText }),
-        });
+      const input = await upscaleForOcr(file);
+      const ocr = await worker.recognize(input);
+      const ocrText = String(ocr.data?.text ?? "");
+      const confidence = typeof ocr.data?.confidence === "number" ? ocr.data.confidence : 0;
 
-        if (!resText.ok) {
-          throw new Error("extract-text failed");
+      if (!ocrText.trim()) throw new Error("OCR Null");
+
+      let ai: any = null;
+      let usedFallback = false;
+
+      try {
+        const shouldFallbackEarly = confidence <= 75;
+
+        if (!shouldFallbackEarly) {
+          const resText = await fetch("/api/extract-text", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ocrText }),
+          });
+
+          if (!resText.ok) {
+            throw new Error("extract-text failed");
+          }
+
+          ai = await resText.json();
+
+          const totalOk =
+            typeof ai?.total_amount === "number" && ai.total_amount > 0;
+          if (!totalOk) throw new Error("AI text total invalid");
+        } else {
+          throw new Error("OCR confidence too low, fallback");
+        }
+      } catch {
+        usedFallback = true;
+        if (confidence <= 75) {
+              toast.info("Analyzing Receipts", {
+              description: "Currently analyzing your receipt details in more depth...",
+              icon: <Loader2 className="animate-spin" />,
+            });
         }
 
-        ai = await resText.json();
+        const fd = new FormData();
+        fd.append("file", file);
 
-        const totalOk =
-          typeof ai?.total_amount === "number" && ai.total_amount > 0;
-        if (!totalOk) throw new Error("AI text total invalid");
-      } else {
-        throw new Error("OCR confidence too low, fallback");
+        const resImg = await fetch("/api/extract", {
+          method: "POST",
+          body: fd,
+        });
+
+        if (!resImg.ok) {
+          const err = await resImg.json().catch(() => ({}));
+          throw new Error(err?.error || "Fallback image extract failed");
+        }
+
+        ai = await resImg.json();
       }
-    } catch {
-      usedFallback = true;
-      if (confidence <= 75) {
-            toast.info("Analyzing Receipts", {
-            description: "Currently analyzing your receipt details in more depth...",
-            icon: <Loader2 className="animate-spin" />,
-          });
-      }
 
-      const fd = new FormData();
-      fd.append("file", file);
-
-      const resImg = await fetch("/api/extract", {
-        method: "POST",
-        body: fd,
+      setRawGeminiData({
+        ...ai,
+        ocrText,     
+        confidence,
+        meta: {
+          ...(ai?.meta || {}),
+          usedFallback,
+        },
       });
 
-      if (!resImg.ok) {
-        const err = await resImg.json().catch(() => ({}));
-        throw new Error(err?.error || "Fallback image extract failed");
+      setFormData((prev) => ({
+        ...prev,
+        merchant_name: ai?.merchant_name ?? "",
+        amount: ai?.total_amount ? String(ai.total_amount) : "",
+        date: ai?.date ?? new Date().toISOString().split("T")[0],
+        category: ai?.category ?? "Others",
+      }));
+
+      if (usedFallback) {
+        toast.success("Success: OCR → AI extract!");
+      } else {
+        toast.success("Scanning completed!")
       }
 
-      ai = await resImg.json();
+      setStatus("idle");
+    } catch (e: any) {
+      setError(e?.message || "Unknown error");
+      setStatus("error");
     }
-    setRawGeminiData({
-      ...ai,
-      ocrText,     
-      confidence,
-      meta: {
-        ...(ai?.meta || {}),
-        usedFallback,
-      },
-    });
-
-    setFormData((prev) => ({
-      ...prev,
-      merchant_name: ai?.merchant_name ?? "",
-      amount: ai?.total_amount ? String(ai.total_amount) : "",
-      date: ai?.date ?? new Date().toISOString().split("T")[0],
-      category: ai?.category ?? "Others",
-    }));
-
-    if (usedFallback) {
-      toast.success("Success: OCR → AI extract!");
-    } else {
-      toast.success("Scanning completed!")
-    }
-
-    setStatus("idle");
-  } catch (e: any) {
-    setError(e?.message || "Unknown error");
-    setStatus("error");
   }
-}
 
 
 

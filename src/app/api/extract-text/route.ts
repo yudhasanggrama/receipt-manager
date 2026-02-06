@@ -1,4 +1,3 @@
-// src/app/api/extract-text/route.ts
 import { google } from "@ai-sdk/google";
 import { generateObject } from "ai";
 import { z } from "zod";
@@ -29,7 +28,7 @@ const ReceiptSchema = z.object({
     .default([]),
 });
 
-// --- helpers ---
+// --- HELPERS ---
 function normalizeIndoNumber(raw: string): number {
   let s = String(raw || "").trim();
   if (!s) return 0;

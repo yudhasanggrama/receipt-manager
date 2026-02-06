@@ -212,7 +212,6 @@ export default function MyReceiptsPage(p0: { params: Promise<{ id: string; }>; }
                                     className="w-full flex items-center justify-between px-5 py-4 bg-white border border-slate-200 rounded-2xl text-[10px] font-bold uppercase text-slate-600 shadow-sm transition-all active:scale-95">
                                     <div className="flex items-center gap-2 truncate">
                                         {category ? (
-                                            // Bagian Icon
                                             <span className={CATEGORIES.find(c => c.id === category)?.color.split(' ')[1]}>
                                                 {CATEGORIES.find(c => c.id === category)?.icon}
                                             </span>
@@ -223,7 +222,7 @@ export default function MyReceiptsPage(p0: { params: Promise<{ id: string; }>; }
                                         {/* Bagian Teks Label */}
                                         <span className={`truncate ${
                                             category 
-                                                ? CATEGORIES.find(c => c.id === category)?.color.split(' ')[1] // Mengambil text-color dari objek kategori
+                                                ? CATEGORIES.find(c => c.id === category)?.color.split(' ')[1]
                                                 : 'text-slate-600'
                                         }`}>
                                             {category || "All Categories"}

@@ -7,7 +7,7 @@ export default function LogoutButton() {
 
   const onLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
-    router.replace("/login"); // ✅ penting
+    router.replace("/login");
     router.refresh();
   };
 
