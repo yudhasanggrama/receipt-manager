@@ -12,7 +12,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import Sidebar from "@/app/components/sidebar/SidebarClient";
 import { toast } from "sonner";
-import { createWorker, type Worker } from "tesseract.js";
+import { createWorker, type Worker, PSM } from "tesseract.js";
 import Cropper, { Area } from "react-easy-crop";
 
 const CATEGORIES = [
@@ -37,8 +37,12 @@ async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<File> {
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("No 2d context");
 
-  canvas.width = pixelCrop.width;
-  canvas.height = pixelCrop.height;
+  const padding = 20;
+  canvas.width = pixelCrop.width + (padding * 2);
+  canvas.height = pixelCrop.height + (padding * 2);
+
+  ctx.fillStyle = "white";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   ctx.drawImage(
     image,
@@ -46,17 +50,21 @@ async function getCroppedImg(imageSrc: string, pixelCrop: Area): Promise<File> {
     pixelCrop.y,
     pixelCrop.width,
     pixelCrop.height,
-    0,
-    0,
+    padding,
+    padding,
     pixelCrop.width,
     pixelCrop.height
   );
 
+  let fileType = "image/jpeg"; 
+
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
       if (!blob) return reject(new Error("Canvas is empty"));
-      resolve(new File([blob], "cropped_receipt.jpg", { type: "image/jpeg" }));
-    }, "image/jpeg", 0.95);
+      // Gunakan ekstensi yang sesuai
+      const extension = fileType === "image/png" ? "png" : "jpg";
+      resolve(new File([blob], `cropped_receipt.${extension}`, { type: fileType }));
+    }, fileType, 0.95);
   });
 }
 
@@ -101,19 +109,16 @@ export default function AddReceiptClient() {
 
     (async () => {
       try {
-        // Logger optional (buat debug progress)
-        // const worker = await createWorker("eng", 1, { logger: (m) => console.log(m) });
-
         const worker = await createWorker("eng");
         if (!alive) {
           await worker.terminate();
           return;
         }
 
-        // Optional parameter yang aman (nggak bikin “kacau”)
         await worker.setParameters({
+          tessedit_pageseg_mode: "4" as any,
+          tessedit_char_whitelist: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,-/: ",
           preserve_interword_spaces: "1",
-          // tessedit_pageseg_mode: "6", // kalau mau coba, tapi default dulu biar stabil
         });
 
         workerRef.current = worker;
@@ -161,7 +166,7 @@ export default function AddReceiptClient() {
     setIsCameraActive(false);
   }
 
-  function capturePhoto() {
+ function capturePhoto() {
     if (!videoRef.current || !canvasRef.current) return;
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -170,18 +175,23 @@ export default function AddReceiptClient() {
     canvas.getContext("2d")?.drawImage(video, 0, 0);
 
     const dataUrl = canvas.toDataURL("image/jpeg");
-    setTempImage(dataUrl); // Buka cropper
+    setTempImage(dataUrl); // Ini akan memicu modal Crop muncul
     stopCamera();
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0] ?? null;
-    if (!f) return;
-    const url = URL.createObjectURL(f);
-    setTempImage(url); // Buka cropper
-  };
+  const f = e.target.files?.[0] ?? null;
+  if (!f) return;
+  
+  // Langsung set ke file final & preview, melewati proses tempImage (crop)
+  const url = URL.createObjectURL(f);
+  setFile(f);
+  setPreview(url);
+  setTempImage(null); // Memastikan cropper tertutup jika sebelumnya terbuka
+  setError(null);
+};
 
-  // --- FUNGSI SAVE CROP ---
+  // --- FUNCTION SAVE CROP ---
   const onCropComplete = useCallback((_area: Area, pixels: Area) => {
     setCroppedAreaPixels(pixels);
   }, []);
@@ -192,7 +202,7 @@ export default function AddReceiptClient() {
       const croppedFile = await getCroppedImg(tempImage, croppedAreaPixels);
       setFile(croppedFile);
       setPreview(URL.createObjectURL(croppedFile));
-      setTempImage(null); // Tutup cropper
+      setTempImage(null);
       setError(null);
     } catch (e) {
       toast.error("Failed to crop image");
@@ -205,67 +215,63 @@ export default function AddReceiptClient() {
     };
   }, [preview]);
 
-  async function upscaleForOcr(file: File): Promise<File> {
-  const img = new Image();
-  const url = URL.createObjectURL(file);
+ async function upscaleForOcr(file: File): Promise<File> {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
 
-  await new Promise<void>((resolve, reject) => {
-    img.onload = () => resolve();
-    img.onerror = reject;
-    img.src = url;
-  });
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = reject;
+      img.src = url;
+    });
 
-  // Ukuran target agar teks tajam
-  const targetW = 1600; 
-  const scale = targetW / img.width;
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvas context error");
+    const targetW = 2500; 
+    const scale = targetW / img.width;
+    canvas.width = Math.round(img.width * scale);
+    canvas.height = Math.round(img.height * scale);
+    ctx.filter = "grayscale(1) contrast(1) brightness(1.5)";
+    
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    const p = 50; 
+    ctx.drawImage(img, p, p, canvas.width - (p * 2), canvas.height - (p * 2));
 
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(img.width * scale);
-  canvas.height = Math.round(img.height * scale);
+    URL.revokeObjectURL(url);
 
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Canvas context error");
-
-  // --- IMAGE PROCESSING UNTUK OCR ---
-  // Kita buat gambar hitam putih dan kontras tinggi agar teks lebih jelas
-  ctx.filter = "contrast(1.2) grayscale(1)"; 
-  
-  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-  URL.revokeObjectURL(url);
-
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob failed"))), "image/jpeg", 0.9);
-  });
-
-  return new File([blob], file.name, { type: "image/jpeg" });
+    return new Promise((resolve) => {
+      const outputType = file.type || "image/jpeg";
+      canvas.toBlob((b) => {
+        resolve(new File([b!], file.name, { type: outputType }));
+      }, outputType, 1.0);
+    });
   }
-  // --- OCR (Tesseract) -> AI extract (text) ---
+  
+  
   async function runOCR() {
   if (!file) return;
   setStatus("ocr");
   setError(null);
 
   try {
-    const worker = workerRef.current;
-    if (!worker) throw new Error("Worker belum siap");
+    const worker = await createWorker(["eng", "ind"]);
+    if (!worker) throw new Error("Worker not ready");
 
-    // optional resize biar OCR lebih stabil
     const input = await upscaleForOcr(file);
-
-    // 1) OCR
     const ocr = await worker.recognize(input);
     const ocrText = String(ocr.data?.text ?? "");
     const confidence = typeof ocr.data?.confidence === "number" ? ocr.data.confidence : 0;
 
-    if (!ocrText.trim()) throw new Error("OCR kosong");
+    if (!ocrText.trim()) throw new Error("OCR Null");
 
-    // 2) coba extract dari OCR text (utama)
     let ai: any = null;
     let usedFallback = false;
 
     try {
-      const shouldFallbackEarly = confidence < 50;
+      const shouldFallbackEarly = confidence <= 75;
 
       if (!shouldFallbackEarly) {
         const resText = await fetch("/api/extract-text", {
@@ -288,6 +294,12 @@ export default function AddReceiptClient() {
       }
     } catch {
       usedFallback = true;
+      if (confidence <= 75) {
+            toast.info("Analyzing Receipts", {
+            description: "Currently analyzing your receipt details in more depth...",
+            icon: <Loader2 className="animate-spin" />,
+          });
+      }
 
       const fd = new FormData();
       fd.append("file", file);
@@ -323,10 +335,11 @@ export default function AddReceiptClient() {
     }));
 
     if (usedFallback) {
-      toast.success("Sukses: OCR → AI extract!");
+      toast.success("Success: OCR → AI extract!");
     }
 
     setStatus("idle");
+    toast.success("Scanning completed!")
   } catch (e: any) {
     setError(e?.message || "Unknown error");
     setStatus("error");
@@ -505,7 +518,7 @@ export default function AddReceiptClient() {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg, image/jpg, image/png, image/webp/"
                     onChange={handleFileChange}
                     className="hidden"
                   />
