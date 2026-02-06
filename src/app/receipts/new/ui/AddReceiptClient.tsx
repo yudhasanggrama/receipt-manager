@@ -673,7 +673,7 @@ export default function AddReceiptClient() {
 
         <button onClick={handleLogout} className="flex flex-col items-center gap-1 text-slate-400">
           <LogOut size={20} />
-          <span className="text-[9px] font-black uppercase tracking-tighter">Exit</span>
+          <span className="text-[9px] font-black uppercase tracking-tighter">Logout</span>
         </button>
       </nav>
 
