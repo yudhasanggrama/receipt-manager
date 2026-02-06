@@ -72,7 +72,7 @@ export default function LoginClient() {
 
   return (
     <>
-      <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-emerald-50 via-green-50 to-lime-50">
+      <div className="relative min-h-screen overflow-hidden bg-linear-to-br from-emerald-50 via-green-50 to-lime-50">
         <div className="pointer-events-none absolute -top-24 -left-24 h-96 w-96 rounded-full bg-emerald-300/40 blur-3xl" />
         <div className="pointer-events-none absolute top-1/2 -right-24 h-96 w-96 rounded-full bg-lime-300/40 blur-3xl" />
         <div
@@ -89,14 +89,15 @@ export default function LoginClient() {
             <div className="rounded-2xl border border-emerald-100 bg-white/80 p-6 shadow-xl backdrop-blur sm:p-8">
               {/* --- BAGIAN STYLING TERBARU --- */}
               <div className="mb-8">
-                <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
+                <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
                   Welcome to{" "}
-                  <span className="bg-gradient-to-r from-emerald-600 to-green-500 bg-clip-text text-transparent">
-                    MySpendly
+                  <span className="text-2xl tracking-tighter uppercase">My</span>
+                  <span className="bg-linear-to-r from-emerald-600 to-green-500 bg-clip-text text-transparent text-2xl tracking-tighter uppercase">
+                    Spendly
                   </span>
                 </h1>
                 <p className="mt-2 text-sm text-slate-600">
-                  Login to your account to manage your finance.
+                  Login to your account to manage your spending finance.
                 </p>
               </div>
               {/* ------------------------------ */}
